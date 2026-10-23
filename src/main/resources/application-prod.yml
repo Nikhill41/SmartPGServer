@@ -1,0 +1,117 @@
+spring:
+  application:
+    name: pg-management-system
+
+  data:
+    redis:
+      host: redis
+      port: 6379
+      timeout: 60000
+
+  # Database Configuration
+  datasource:
+    url: ${DB_URL}
+    username: ${DB_USERNAME}
+    password: ${DB_PASSWORD}
+    driver-class-name: org.postgresql.Driver
+
+  # JPA Configuration
+  jpa:
+    hibernate:
+      ddl-auto: update # Use 'validate' in production
+    show-sql: true
+    properties:
+      hibernate:
+        format_sql: true
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+
+  # File Upload Configuration
+  servlet:
+    multipart:
+      max-file-size: 10MB
+      max-request-size: 10MB
+
+# JWT Configuration
+jwt:
+  secret: 8bfe293749db45ac998e12eaf45cd9837aa43ff23845123bb8834a5ec792ab74
+  expiration-ms: 86400000 # 24 hours
+
+# SendGrid Configuration
+sendgrid:
+  api:
+    key: ${SENDGRID_API_KEY:your_sendgrid_api_key_here}
+  from:
+    email: no-reply@smartmeeter.online
+    name: PG Management System
+
+# AWS S3 Configuration
+aws:
+  region: ${AWS_REGION:ap-south-1}
+  access-key: ${AWS_ACCESS_KEY:your_aws_access_key_here}
+  secret-key: ${AWS_SECRET_KEY:your_aws_secret_key_here}
+  s3:
+    access-key: ${AWS_ACCESS_KEY:your_aws_access_key_here}
+    secret-key: ${AWS_SECRET_KEY:your_aws_secret_key_here}
+    bucket-name: ${AWS_S3_BUCKET:pg-management-images}
+    region: ${AWS_REGION:ap-south-1}
+  iot:
+    endpoint: ${AWS_IOT_ENDPOINT:https://your-iot-endpoint.iot.ap-south-1.amazonaws.com}
+
+  dynamodb:
+    table-name: ${AWS_DYNAMO_TABLE:meter_readings}
+
+#meter settings
+meter:
+  # Online threshold: meter is considered online if last reading < 60 seconds
+  online-threshold-seconds: 60
+
+  # Maximum time to wait for relay command confirmation (milliseconds)
+  relay-command-timeout-ms: 2000
+
+  # Number of retry attempts for relay command confirmation
+  relay-command-retry-count: 3
+
+  # Delay between retry attempts (milliseconds)
+  relay-command-retry-delay-ms: 500
+
+# Server Configuration
+server:
+  port: 8080
+  error:
+    include-message: always
+    include-binding-errors: always
+
+# Logging Configuration
+logging:
+  level:
+    com.pgmanagement: DEBUG
+    org.springframework.security: DEBUG
+    org.hibernate.SQL: DEBUG
+
+
+
+# ✅ NEW: Billing Configuration
+billing:
+  # Auto-billing scheduler (runs daily at 2:00 AM)
+  auto-billing:
+    enabled: true
+    cron: "0 0 2 * * *"
+
+  # Overdue bill processor (runs daily at 3:00 AM)
+  overdue-processor:
+    enabled: true
+    cron: "0 0 3 * * *"
+
+  # Payment proof settings
+  payment-proof:
+    max-rejection-attempts: 3
+    s3-folder: "payment-proofs"
+
+  # UPI payment link format
+  upi:
+    payment-link-format: "upi://pay?pa=%s&pn=%s&am=%s&cu=INR&tn=%s"
+
+
+
+
+
