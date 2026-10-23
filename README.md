@@ -7,23 +7,23 @@
 [![PostgreSQL](https://img.shields.io/badge/PostgreSQL-15-4169E1?logo=postgresql&logoColor=white)](https://www.postgresql.org/)
 [![Redis](https://img.shields.io/badge/Redis-7-DC382D?logo=redis&logoColor=white)](https://redis.io/)
 [![AWS](https://img.shields.io/badge/AWS-IoT%20%7C%20DynamoDB%20%7C%20S3-232F3E?logo=amazonaws&logoColor=white)](https://aws.amazon.com/)
+[![ESP32](https://img.shields.io/badge/ESP32-C%2B%2B-E7352C?logo=espressif&logoColor=white)](https://www.espressif.com/en/products/socs/esp32)
 [![Docker](https://img.shields.io/badge/Docker-Compose-2496ED?logo=docker&logoColor=white)](https://www.docker.com/)
 
-## Project impact
+## Overview
 
-Smart PG replaces fragmented property, occupancy, billing, and meter-monitoring tasks with one role-aware backend. It models real operational workflows instead of exposing only CRUD endpoints:
+Smart PG is a connected property-management system for paying-guest accommodations. It combines a Java backend, an ESP32-based smart electricity meter, and AWS services to support property operations from room booking through electricity billing.
 
 - **For property owners:** manage properties, rooms, amenities, bookings, tenants, meters, billing rules, bills, and payment verification.
 - **For tenants:** discover available rooms, submit booking requests, view bills and meter data, initiate checkout, and upload payment proof.
-- **For operations:** automate recurring billing and overdue processing, keep a traceable bill history, and expose health and metrics endpoints.
-- **For smart facilities:** connect room-level meters to AWS IoT Device Shadows for live readings and relay commands, while storing historical readings in DynamoDB.
+- **For electricity management:** monitor room-level consumption, detect meter connectivity and disconnection, calculate electricity charges, and provide remote relay control.
+- **For operations:** automate recurring billing and overdue processing, maintain bill history, and expose health and metrics endpoints.
 
-This project demonstrates the software-engineering fundamentals relevant to an entry-level product engineering role: translating business rules into maintainable services, designing secure APIs, integrating external systems, validating inputs, and packaging a reproducible local environment.
-
-## Resume-ready highlights
+## Main features
 
 - Built a **Java 17 / Spring Boot 3 REST API** with layered controller-service-repository architecture for PG property, room, tenant, booking, billing, and payment workflows.
 - Implemented **stateless JWT authentication**, BCrypt password hashing, OTP-based verification, CORS configuration, and method/route-level owner-versus-tenant authorization.
+- Developed an **ESP32 smart-meter device in C++** to measure electricity consumption, track device connectivity, identify connection/disconnection conditions, and communicate meter state and readings to the backend through AWS IoT.
 - Integrated **AWS IoT Device Shadows and MQTT relay commands** for live meter status and remote control, with **DynamoDB** queries for historical time-series readings.
 - Designed automated billing workflows with configurable charges, electricity-cost allocation, bill versioning, overdue processing, payment-proof review, UPI links, and checkout/security-deposit handling.
 - Added **Redis-backed caching**, PostgreSQL persistence through Spring Data JPA, S3 uploads with presigned URLs, Springdoc/OpenAPI documentation, and Spring Boot Actuator health/metrics endpoints.
@@ -47,13 +47,53 @@ This project demonstrates the software-engineering fundamentals relevant to an e
 - Maintain editable bill versions and audit-friendly payment-proof history.
 - Support checkout previews, payment initiation, payment-proof upload, owner verification, late-fee waiver, and settlement completion.
 
-### IoT meter operations
+### ESP32 smart meter and IoT monitoring
+
+The smart-meter component is built around an ESP32 and programmed in C++. It provides the device-side data collection and control layer for room-level electricity monitoring.
+
+#### Device-side responsibilities
+
+- Reads electrical usage data from the connected metering hardware and tracks consumption over time.
+- Publishes current readings and device state to the cloud using the ESP32 connectivity stack.
+- Maintains a connection state so the platform can distinguish an active meter from a disconnected or unavailable device.
+- Detects connection and disconnection events and reports the latest state to the backend.
+- Receives relay-control commands and changes the connected electrical relay state.
+- Publishes updated state after a relay operation so the backend can confirm whether the command was applied.
+- Continues to expose the latest known meter state through the AWS IoT Device Shadow when the backend requests live information.
+
+#### Backend and cloud responsibilities
 
 - Pair and unpair a room meter with owner authorization.
-- Read live meter/device-shadow state and determine online status from a configurable freshness threshold.
+- Read live meter/device-shadow state and determine whether a meter is online from a configurable 60-second freshness threshold.
 - Query historical readings from DynamoDB for a selected time range.
-- Publish relay commands through AWS IoT and retry confirmation within a bounded timeout.
+- Publish relay commands through AWS IoT and retry confirmation within a bounded two-second timeout.
+- Use the meter readings during billing to calculate each tenant's electricity share.
 - Restrict owners to their meters and tenants to the meter associated with their own room.
+
+#### Smart-meter data flow
+
+```text
+Electrical load
+      |
+      v
+ESP32 smart meter (C++)
+  - measure consumption
+  - track connection state
+  - control relay
+      |
+      | AWS IoT / Device Shadow
+      v
+Spring Boot meter services
+  - live readings and online status
+  - owner/tenant authorization
+  - relay command confirmation
+      |
+      +--> DynamoDB: historical readings
+      +--> PostgreSQL: meter-room-owner relationships
+      +--> Billing services: electricity charge calculation
+```
+
+The ESP32 firmware and the Spring Boot backend are separate layers: C++ handles embedded device behavior and communication, while Java handles authentication, authorization, persistence, billing rules, and API access.
 
 ### Security and reliability
 
@@ -79,6 +119,9 @@ Spring Boot REST API
       |             |              |              |
  PostgreSQL       Redis           AWS S3       AWS IoT + DynamoDB
  domain data      search/cache    media         live + historical meters
+                                                   ^
+                                                   |
+                                      ESP32 smart meter (C++)
 ```
 
 The codebase follows a separation of concerns:
@@ -111,6 +154,7 @@ The full contract is available through Swagger UI after startup.
 ## Technology stack
 
 - **Language/runtime:** Java 17
+- **Embedded development:** C++ on ESP32
 - **Backend:** Spring Boot 3.2, Spring MVC, Spring Data JPA, Spring Security, Bean Validation
 - **Persistence:** PostgreSQL 15 with Hibernate
 - **Caching:** Redis 7 with JSON serialization and a five-minute cache policy
